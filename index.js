@@ -3,6 +3,7 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 const app = express();
 
@@ -39,6 +40,7 @@ const usersCollections = client.db("doyaShop").collection("users");
 const categoriesCollections = client.db("doyaShop").collection("categories");
 const phonesCollections = client.db("doyaShop").collection("phones");
 const bookingsCollections = client.db("doyaShop").collection("booking");
+const paymentsCollections = client.db("doyaShop").collection("payments");
 
 async function run() {
   try {
@@ -185,6 +187,13 @@ async function run() {
       res.send(phones);
     });
 
+    app.get("/phones/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const phone = await bookingsCollections.findOne(query);
+      res.send(phone);
+    });
+
     app.patch(
       "/phones/for-sold/:id",
       verifyJWT,
@@ -257,6 +266,39 @@ async function run() {
     app.post("/bookings", verifyJWT, async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollections.insertOne(booking);
+      res.send(result);
+    });
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const data = req.body;
+      const price = data?.price;
+      const amount = price * 100;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        currency: "usd",
+        amount: amount,
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentsCollections.insertOne(payment);
+      const id = payment.bookingId;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          payment: "paid",
+          transId: payment.transId,
+        },
+      };
+      const updatedResult = await bookingsCollections.updateOne(
+        filter,
+        updatedDoc
+      );
       res.send(result);
     });
 
