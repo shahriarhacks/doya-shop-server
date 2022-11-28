@@ -82,6 +82,13 @@ async function run() {
       res.send({ isSeller: user?.role === "seller" });
     });
 
+    app.get("/users/for-seller", verifyJWT, verifySeller, async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const user = await usersCollections.findOne(query);
+      res.send(user);
+    });
+
     app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
       const query = {};
       const users = await usersCollections.find(query).toArray();
@@ -98,13 +105,6 @@ async function run() {
       const query = { role: "user" };
       const users = await usersCollections.find(query).toArray();
       res.send(users);
-    });
-
-    app.get("/users/for-seller", verifyJWT, verifySeller, async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const user = await usersCollections.findOne(query);
-      res.send(user);
     });
 
     app.put("/users/admin/:id", async (req, res) => {
@@ -159,16 +159,16 @@ async function run() {
       res.send(categories);
     });
 
-    app.post("/categories", verifyJWT, verifyAdmin, async (req, res) => {
-      const category = req.body;
-      const result = await categoriesCollections.insertOne(category);
-      res.send(result);
-    });
-
-    app.get("/phones/:id", async (req, res) => {
+    app.get("/categories/:id", async (req, res) => {
       const id = req.params.id;
       const query = { categoryId: id, stokeStatus: "unsold" };
       const result = await phonesCollections.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post("/categories", verifyJWT, verifyAdmin, async (req, res) => {
+      const category = req.body;
+      const result = await categoriesCollections.insertOne(category);
       res.send(result);
     });
 
@@ -178,7 +178,7 @@ async function run() {
       res.send(unSoldPhones);
     });
 
-    app.get("/phones/for-seller", async (req, res) => {
+    app.get("/phones/for-seller", verifyJWT, verifySeller, async (req, res) => {
       const email = req.query.email;
       const query = { email: email };
       const phones = await phonesCollections.find(query).toArray();
